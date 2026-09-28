@@ -55,6 +55,10 @@ class Variogram(object):
     @overload
     def corr(self, dx: float) -> float:...
 
+    def corr_array(self, displacements: ndarray) -> ndarray:
+        """Return (N,) float64 correlations for (N, 1), (N, 2), or (N, 3) displacements."""
+        ...
+
 
 """
 gaussianfft.variogram
@@ -271,6 +275,7 @@ def conditional_simulate(
         n: int = 1,
         seed: Optional[int] = None,
         method: str = 'SimpleKriging',
+    vectorized: bool = False,
 ) -> list[ndarray]:...
 
 
@@ -289,6 +294,7 @@ def conditional_simulate(
         n: int = 1,
         seed: Optional[int] = None,
         method: str = 'SimpleKriging',
+    vectorized: bool = False,
 ) -> list[ndarray]:...
 
 
@@ -309,6 +315,7 @@ def conditional_simulate(
         n: int = 1,
         seed: Optional[int] = None,
         method: str = 'SimpleKriging',
+        vectorized: bool = False,
 ) -> list[ndarray]:
     """
 Generates conditional Gaussian random field realizations using simple kriging.
@@ -336,6 +343,8 @@ n: int, optional
     Number of realizations to generate. Default is 1.
 seed: int, optional
     Random seed. Sets the global seed before simulation. Default is None (no change).
+vectorized: bool, optional
+    Use batched C++ correlations. Default is False to retain the scalar benchmark baseline.
 
 Returns
 -------
@@ -362,6 +371,7 @@ def predict(
         *,
         mean: Union[float, ndarray] = 0.0,
         method: str = 'SimpleKriging',
+    vectorized: bool = False,
 ) -> tuple[ndarray, ndarray]:...
 
 
@@ -378,6 +388,7 @@ def predict(
         *,
         mean: Union[float, ndarray] = 0.0,
         method: str = 'SimpleKriging',
+    vectorized: bool = False,
 ) -> tuple[ndarray, ndarray]:...
 
 
@@ -396,6 +407,7 @@ def predict(
         *,
         mean: Union[float, ndarray] = 0.0,
         method: str = 'SimpleKriging',
+        vectorized: bool = False,
 ) -> tuple[ndarray, ndarray]:
     """
 Returns the kriging mean and standard deviation over the grid.
@@ -419,6 +431,8 @@ mean: float or ndarray, optional
     match the grid shape. Default is 0.0.
 method: str, optional
     Kriging method. One of 'SimpleKriging' (default) or 'OrdinaryKriging'.
+vectorized: bool, optional
+    Use batched C++ correlations. Default is False to retain the scalar benchmark baseline.
 
 Returns
 -------

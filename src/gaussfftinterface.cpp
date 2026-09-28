@@ -179,6 +179,10 @@ PYBIND11_MODULE(_gaussianfft, m, py::mod_gil_not_used(), py::multiple_interprete
       .def("corr", ptr1)
       .def("corr", ptr2)
       .def("corr", ptr3)
+      .def("corr_array", &GaussFFT::CorrArray, py::arg("displacements"),
+           "Return float64 correlations with shape (N,) for displacements with shape "
+           "(N, 1), (N, 2), or (N, 3). Columns are dx, dy, dz, as in corr. "
+           "Strided arrays are supported; other numeric dtypes are converted to float64.")
     ;
   }
 
