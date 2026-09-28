@@ -13,7 +13,7 @@ _METHODS = {
 
 
 def _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
-                   obs_locations, obs_values, obs_uncertainties, mean, vectorized=False):
+                   obs_locations, obs_values, obs_uncertainties, mean):
     cls = _METHODS.get(method)
     if cls is None:
         raise ValueError(
@@ -21,10 +21,10 @@ def _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
         )
     if method == 'SimpleKriging':
         return cls(variogram, nx, dx, ny, dy, nz, dz,
-                   obs_locations, obs_values, obs_uncertainties, mean=mean, vectorized=vectorized)
+                   obs_locations, obs_values, obs_uncertainties, mean=mean)
     elif method == 'OrdinaryKriging':
         return cls(variogram, nx, dx, ny, dy, nz, dz,
-                   obs_locations, obs_values, obs_uncertainties, vectorized=vectorized)
+                   obs_locations, obs_values, obs_uncertainties)
     else:
         raise ValueError(f"Unsupported kriging method: {method!r}")
 
@@ -77,15 +77,15 @@ def _parse_grid_and_obs(args, kwargs):
     return ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties
 
 
-def predict(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, calculate_stddev=False, vectorized=False, **kwargs):
+def predict(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, calculate_stddev=False, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
     k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
-                       obs_locations, obs_values, obs_uncertainties, mean, vectorized)
+                       obs_locations, obs_values, obs_uncertainties, mean)
     return k.predict(calculate_stddev=calculate_stddev)
 
 
-def simulate(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, n_sim=1, vectorized=False, **kwargs):
+def simulate(variogram, nx, dx, *args, method='SimpleKriging', mean: Union[float, ndarray] = 0.0, n_sim=1, **kwargs):
     ny, dy, nz, dz, obs_locations, obs_values, obs_uncertainties = _parse_grid_and_obs(args, kwargs)
     k = _build_kriging(method, variogram, nx, dx, ny, dy, nz, dz,
-                       obs_locations, obs_values, obs_uncertainties, mean, vectorized)
+                       obs_locations, obs_values, obs_uncertainties, mean)
     return k.simulate(n_sim=n_sim)

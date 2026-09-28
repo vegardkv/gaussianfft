@@ -40,7 +40,6 @@ def benchmark_case(total: int, ndims: int, obs_fraction: float):
         start = perf_counter()
         result = gaussianfft.predict(
             variogram, *grid_args, obs_locations, obs_values, obs_uncertainties,
-            vectorized=True,
         )
         elapsed.append(perf_counter() - start)
         del result
