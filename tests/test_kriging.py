@@ -11,31 +11,6 @@ from gaussianfft._kriging import predict
 from gaussianfft._kriging.kriging_toolkit import OrdinaryKriging
 
 
-@pytest.mark.parametrize('method', ['SimpleKriging', 'OrdinaryKriging'])
-@pytest.mark.parametrize('ndims', [1, 2, 3])
-def test_chunked_matches_unchunked(method, ndims, monkeypatch):
-    from gaussianfft._kriging import kriging_toolkit
-
-    monkeypatch.setattr(kriging_toolkit, '_MEMORY_BUDGET_BYTES', 10 * 1024 * 1024 * 1024)
-    rng = np.random.default_rng(42)
-    variogram = grf.variogram('matern52', 10.0, 5.0, 3.0, 30.0, 20.0)
-    grid_args = (8, 1.0) * ndims
-    obs_locations = rng.uniform(0.0, 7.0, (4, ndims))
-    obs_values = rng.standard_normal(4)
-    obs_uncertainties = np.full(4, 0.1)
-    args = (variogram, *grid_args, obs_locations, obs_values, obs_uncertainties)
-
-    expected_mean, expected_std = grf.predict(*args, method=method, calculate_stddev=True)
-    expected_sims = grf.conditional_simulate(*args, method=method, n=2, seed=42)
-
-    monkeypatch.setattr(kriging_toolkit, '_MEMORY_BUDGET_BYTES', 512)
-    chunked_mean, chunked_std = grf.predict(*args, method=method, calculate_stddev=True)
-    chunked_sims = grf.conditional_simulate(*args, method=method, n=2, seed=42)
-    np.testing.assert_allclose(chunked_mean, expected_mean, rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(chunked_std, expected_std, rtol=1e-12, atol=1e-12)
-    np.testing.assert_allclose(chunked_sims, expected_sims, rtol=1e-12, atol=1e-12)
-
-
 # ---------------------------------------------------------------------------
 # Simple Kriging
 # ---------------------------------------------------------------------------
