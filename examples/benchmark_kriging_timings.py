@@ -1,14 +1,15 @@
 """Report vectorized kriging timings by grid size, dimension, and observation density."""
 
+import sys
 from time import perf_counter
 
 import numpy as np
 
 import gaussianfft
 
-GRID_TOTALS = (10_000, 100_000)
+GRID_TOTALS = (10_000, 100_000, 1_000_000)
 DIMENSIONS = (2, 3)
-OBS_FRACTIONS = (0.001, 0.01)
+OBS_FRACTIONS = (0.0001, 0.001)
 REPEATS = 3
 SEED = 42
 OBS_UNCERTAINTY = 0.1
@@ -47,6 +48,7 @@ def benchmark_case(total: int, ndims: int, obs_fraction: float):
 
 
 def main():
+    grid_totals = GRID_TOTALS[:-1] if '--fast' in sys.argv else GRID_TOTALS
     # Prepare table print-out
     columns = [
         (ndims, fraction)
@@ -54,9 +56,9 @@ def main():
         for fraction in OBS_FRACTIONS
     ]
     headers = ['Grid total size'] + [
-        f'{ndims}D, observations = {fraction:.1%}' for ndims, fraction in columns
+        f'{ndims}D, obs. = {fraction * 100:g}%' for ndims, fraction in columns
     ]
-    widths = [max(len(headers[0]), *(len(f'{total:,}') for total in GRID_TOTALS))]
+    widths = [max(len(headers[0]), *(len(f'{total:,}') for total in grid_totals))]
     widths += [len(header) for header in headers[1:]]
     border = '+' + '+'.join('-' * (width + 2) for width in widths) + '+'
 
@@ -71,16 +73,16 @@ def main():
     print_row(headers)
     print(border)
     longest = 0.0
-    for total in GRID_TOTALS:
+    for total in grid_totals:
         row = [f'{total:,}']
         for ndims, fraction in columns:
             median, maximum = benchmark_case(total, ndims, fraction)
-            row.append(f'{median:.3f} s')
+            row.append(f'{median:.2f} s')
             longest = max(longest, maximum)
         print_row(row)
     print(border)
     print('Longest execution time:')
-    print(f'{longest:.3f} s')
+    print(f'{longest:.2f} s')
 
 
 if __name__ == '__main__':
