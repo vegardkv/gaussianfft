@@ -59,7 +59,7 @@ class TestVariogram(unittest.TestCase):
                 displacements = rng.uniform(-1000.0, 1000.0, (20, ndims))
                 displacements[0] = 0.0
                 for values in (displacements, np.asfortranarray(displacements),
-                               displacements[::-2, ::-1], displacements.astype(np.float32),
+                               displacements[-2::-2, ::-1], displacements.astype(np.float32),
                                displacements.astype(np.int64)):
                     with self.subTest(kind=kind, ndims=ndims, strides=values.strides,
                                       dtype=values.dtype):

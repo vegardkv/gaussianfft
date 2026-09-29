@@ -24,11 +24,17 @@ GRID_EXTENT = 900  # = 3x main_range of variogram
 
 
 def benchmark_case(total: int, ndims: int, obs_fraction: float):
+    # Crudely set the grid size so that the total number of grid points is
+    # approximately equal to the desired total. The purpose of this benchmark
+    # is to get a ballpark estimate of the timings rather than an exact
+    # measurement.
     size = round(np.power(total, 1 / ndims))
-    assert size > 1
+    if size <= 1:
+        raise ValueError("Grid size must be greater than 1.")
     spacing = GRID_EXTENT / (size - 1)
     n_obs = round(total * obs_fraction)
-    assert n_obs > 0
+    if n_obs <= 0:
+        raise ValueError("Number of observations must be positive.")
     rng = np.random.default_rng(SEED)
     obs_locations = rng.uniform(0.0, GRID_EXTENT, size=(n_obs, ndims))
     obs_values = rng.standard_normal(n_obs)
