@@ -1,4 +1,4 @@
-from .api import predict, simulate
+from .api import predict as predict, simulate as simulate
 from .covariance import Covariance
 from .grid_spec import GridSpec
 from .kriging_toolkit import Kriging, OrdinaryKriging, SimpleKriging
