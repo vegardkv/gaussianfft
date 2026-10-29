@@ -14,7 +14,6 @@ from gaussianfft._kriging.kriging_utils import (
     interpolate_at_obs,
     obs_cov_times_vector,
     obs_interp_coords,
-    simulate_uncond,
 )
 from gaussianfft._kriging.grid_partition import GridPartition
 from gaussianfft._kriging.grid_spec import GridSpec
@@ -92,7 +91,7 @@ class SimpleKriging(Kriging):
         results = []
 
         for _ in range(n_sim):
-            uncond = simulate_uncond(self._variogram, grid)
+            uncond = self._variogram.simulate(grid)
             uncond_at_obs = interpolate_at_obs(uncond, obs_coords)
             obs_residuals = (obs.values - self.mean) - uncond_at_obs
 
@@ -205,7 +204,7 @@ class OrdinaryKriging(Kriging):
         results = []
 
         for _ in range(n_sim):
-            uncond = simulate_uncond(self._variogram, grid)
+            uncond = self._variogram.simulate(grid)
             uncond_at_obs = interpolate_at_obs(uncond, obs_coords)
             obs_residuals = obs.values - uncond_at_obs
 

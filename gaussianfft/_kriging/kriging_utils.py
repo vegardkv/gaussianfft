@@ -81,7 +81,3 @@ def obs_interp_coords(obs_locations, grid: GridSpec):
 
 def interpolate_at_obs(field, obs_coords):
     return scipy.ndimage.map_coordinates(field, obs_coords, order=1)
-
-
-def simulate_uncond(variogram: Covariance, grid: GridSpec):
-    return variogram.simulate(grid)

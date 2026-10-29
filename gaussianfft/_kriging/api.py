@@ -36,7 +36,7 @@ def _build_kriging(
     )
 
 
-def predict_impl(
+def predict(
         variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
         obs_locations, obs_values, obs_uncertainties, *,
         method: KrigingType = 'simple', mean: float = 0.0, calculate_stddev=False,
@@ -50,7 +50,7 @@ def predict_impl(
     return estimator.predict(grid, obs, _as_covariance(variogram), calculate_stddev=calculate_stddev)
 
 
-def simulate_impl(
+def simulate(
         variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
         obs_locations, obs_values, obs_uncertainties, *,
         method: KrigingType = 'simple', mean: float = 0.0, n_sim=1,
