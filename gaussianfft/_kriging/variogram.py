@@ -30,11 +30,19 @@ class Variogram(Covariance):
         return self._variogram
 
     def corr_matrix(self, points, locations) -> np.ndarray:
+        # The readable implementation:
+        #   points = np.asarray(points, dtype=float)
+        #   corr = np.empty((len(points), len(locations)))
+        #   for j, location in enumerate(np.asarray(locations, dtype=float)):
+        #       corr[:, j] = self._variogram.corr_array(points - location)
+        #   return corr
+        # The performant (but memory-intensive) implementation:
         points = np.asarray(points, dtype=float)
-        corr = np.empty((len(points), len(locations)))
-        for j, location in enumerate(np.asarray(locations, dtype=float)):
-            corr[:, j] = self._variogram.corr_array(points - location)
-        return corr
+        locations = np.asarray(locations, dtype=float)
+        offsets = points[:, None, :] - locations[None, :, :]
+        return self._variogram.corr_array(
+            offsets.reshape(-1, points.shape[1])
+        ).reshape(len(points), len(locations))
 
     def simulate(self, grid: GridSpec) -> np.ndarray:
         grid_args = tuple(value for axis in zip(grid.shape, grid.spacing) for value in axis)
