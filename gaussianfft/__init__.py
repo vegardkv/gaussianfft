@@ -4,7 +4,7 @@ from importlib.util import find_spec
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from gaussianfft._kriging.api import KrigingType
+    from gaussianfft._kriging import api
 
 if find_spec("numpy") is None:
     raise ImportError("gaussianfft requires NumPy to be installed")
@@ -42,28 +42,53 @@ __all__ = [
 
 
 def conditional_simulate(
-        variogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
-        obs_locations, obs_values, obs_uncertainties, *,
-        mean=0.0, n=1, seed=None, method: 'KrigingType' = 'simple',
+        variogram_,
+        grid_shape: tuple[int, ...],
+        grid_spacing: tuple[float, ...],
+        obs_locations,
+        obs_values,
+        obs_uncertainties,
+        *,
+        simple_kriging_mean=0.0,
+        n=1,
+        seed=None,
+        method: 'api.KrigingType' = 'simple',
+        cdn_chunk_shape: 'tuple[int, ...] | None' = None,
+        cdn_padding_range: 'tuple[float, ...] | None' = None,
+        ord_kriging_max_obs_gls: int = 2000,
 ):
     """Generate conditional fields using shape and spacing tuples in x, y, z order."""
+    from gaussianfft._kriging import api
+
     if seed is not None:
         _gaussianfft.seed(seed)
-    from gaussianfft._kriging import simulate as _kriging_simulate
-    return _kriging_simulate(
-        variogram, grid_shape, grid_spacing, obs_locations, obs_values, obs_uncertainties,
-        mean=mean, n_sim=n, method=method,
+    return api.simulate(
+        variogram_, grid_shape, grid_spacing, obs_locations, obs_values, obs_uncertainties,
+        mean=simple_kriging_mean, n_sim=n, method=method,
+        chunk_shape=cdn_chunk_shape, padding_range=cdn_padding_range, max_obs_gls=ord_kriging_max_obs_gls,
     )
 
 
 def predict(
-        variogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
-        obs_locations, obs_values, obs_uncertainties, *,
-        mean=0.0, method: 'KrigingType' = 'simple', calculate_stddev=False,
+        variogram_,
+        grid_shape: tuple[int, ...],
+        grid_spacing: tuple[float, ...],
+        obs_locations,
+        obs_values,
+        obs_uncertainties,
+        *,
+        simple_kriging_mean=0.0,
+        method: 'api.KrigingType' = 'simple',
+        calculate_stddev=False,
+        cdn_chunk_shape: 'tuple[int, ...] | None' = None,
+        cdn_padding_range: 'tuple[float, ...] | None' = None,
+        ord_kriging_max_obs_gls: int = 2000,
 ):
     """Predict a field using shape and spacing tuples in x, y, z order."""
-    from gaussianfft._kriging import predict as _kriging_predict
-    return _kriging_predict(
-        variogram, grid_shape, grid_spacing, obs_locations, obs_values, obs_uncertainties,
-        mean=mean, method=method, calculate_stddev=calculate_stddev,
+    from gaussianfft._kriging import api
+
+    return api.predict(
+        variogram_, grid_shape, grid_spacing, obs_locations, obs_values, obs_uncertainties,
+        mean=simple_kriging_mean, method=method, calculate_stddev=calculate_stddev,
+        chunk_shape=cdn_chunk_shape, padding_range=cdn_padding_range, max_obs_gls=ord_kriging_max_obs_gls,
     )

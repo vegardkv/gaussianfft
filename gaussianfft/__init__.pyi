@@ -271,10 +271,13 @@ def conditional_simulate(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        simple_kriging_mean: float = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
         method: KrigingType = 'simple',
+        cdn_chunk_shape: Optional[tuple[int, ...]] = None,
+        cdn_padding_range: Optional[tuple[float, ...]] = None,
+        ord_kriging_max_obs_gls: int = 2000,
 ) -> list[ndarray]:
     """
 Generates conditional Gaussian random field realizations using the selected kriging method.
@@ -293,7 +296,7 @@ obs_values: ndarray
     Array of shape (N,) with observed values.
 obs_uncertainties: ndarray
     Array of shape (N,) with observation uncertainties (standard deviations).
-mean: float, optional
+simple_kriging_mean: float, optional
     Constant prior mean of the field (simple kriging only). Default is 0.0.
 n: int, optional
     Number of realizations to generate. Default is 1.
@@ -301,6 +304,16 @@ seed: int, optional
     Random seed. Sets the global seed before simulation. Default is None (no change).
 method: {'simple', 'ordinary'}, optional
     Kriging method. Default is 'simple'.
+cdn_chunk_shape: tuple of int, optional
+    Positive grid-node counts per chunk, with one entry per grid dimension.
+    Specify together with cdn_padding_range; omitting both uses all observations.
+cdn_padding_range: tuple of float, optional
+    Non-negative finite physical padding per axis beyond the chunk's cell bounds.
+    Unconditional simulation remains global; only its correction is localized.
+ord_kriging_max_obs_gls: int, optional
+    Maximum observation count for ordinary-kriging GLS mean estimation.
+    Default is 2000. Larger sets use diagonal-covariance WLS; zero forces WLS.
+    Ignored for simple kriging.
 
 Returns
 -------
@@ -324,9 +337,12 @@ def predict(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        simple_kriging_mean: float = 0.0,
         method: KrigingType = 'simple',
         calculate_stddev: bool = False,
+        cdn_chunk_shape: Optional[tuple[int, ...]] = None,
+        cdn_padding_range: Optional[tuple[float, ...]] = None,
+        ord_kriging_max_obs_gls: int = 2000,
 ) -> tuple[ndarray, Optional[ndarray]]:
     """
 Returns the kriging mean and standard deviation over the grid.
@@ -345,12 +361,23 @@ obs_values: ndarray
     Array of shape (N,) with observed values.
 obs_uncertainties: ndarray
     Array of shape (N,) with observation uncertainties (standard deviations).
-mean: float, optional
+simple_kriging_mean: float, optional
     Constant prior mean of the field (simple kriging only). Default is 0.0.
 method: {'simple', 'ordinary'}, optional
     Kriging method. Default is 'simple'.
 calculate_stddev: bool, optional
     Whether to calculate the standard deviation. Default is False.
+cdn_chunk_shape: tuple of int, optional
+    Positive grid-node counts per chunk, with one entry per grid dimension.
+    Specify together with cdn_padding_range; omitting both uses all observations.
+cdn_padding_range: tuple of float, optional
+    Non-negative finite physical padding per axis beyond the chunk's cell bounds.
+    Users are responsible for padding large enough to avoid boundary artifacts.
+ord_kriging_max_obs_gls: int, optional
+    Maximum observation count for ordinary-kriging GLS mean estimation.
+    Default is 2000. Larger sets use diagonal-covariance WLS; zero forces WLS.
+    Ignored for simple kriging. Ordinary standard deviations include global mean
+    uncertainty under the full covariance model, also when WLS estimates the mean.
 
 Returns
 -------

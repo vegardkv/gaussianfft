@@ -9,7 +9,10 @@ if platform.python_implementation() == 'PyPy':
     pytest.skip('Kriging requires SciPy, which is unavailable on PyPy', allow_module_level=True)
 
 import gaussianfft as grf
-from gaussianfft._kriging import ObservationData, OrdinaryKriging, Variogram, predict
+from gaussianfft._kriging.api import predict
+from gaussianfft._kriging.kriging_toolkit import OrdinaryKriging
+from gaussianfft._kriging.observation_data import ObservationData
+from gaussianfft._kriging.variogram import Variogram
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +199,7 @@ class TestSimpleKriging2D:
         sims = grf.conditional_simulate(
             self.variogram, (self.nx, self.ny), (self.dx, self.dy),
             obs_locations, obs_values, obs_uncertainties,
-            mean=mean, n=1,
+            simple_kriging_mean=mean, n=1,
         )
 
         assert len(sims) == 1
