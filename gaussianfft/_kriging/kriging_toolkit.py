@@ -62,7 +62,7 @@ class SimpleKriging(Kriging):
         self._partition: GridPartition | None = None
 
     def _initialize(self, obs: ObservationData, variogram: Covariance) -> None:
-        partition = GridPartition(self._neighborhood, obs)
+        partition = GridPartition(self._neighborhood, obs, variogram)
         self._obs = obs
         self._variogram = variogram
         self._cholesky_cache = CholeskyCache(obs, variogram)
@@ -155,7 +155,7 @@ class OrdinaryKriging(Kriging):
     def _initialize(
         self, obs: ObservationData, variogram: Covariance, calculate_stddev=False,
     ) -> None:
-        partition = GridPartition(self._neighborhood, obs)
+        partition = GridPartition(self._neighborhood, obs, variogram)
         self._obs = obs
         self._variogram = variogram
         self._cholesky_cache = CholeskyCache(obs, variogram)
