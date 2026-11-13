@@ -37,6 +37,7 @@ class GridSpec:
 
     def coordinates(self) -> np.ndarray:
         """Return node coordinates in the same C-order as grid-shaped outputs."""
+        assert self.origin is not None
         axes = [
             origin + np.arange(size) * spacing
             for size, spacing, origin in zip(self.shape, self.spacing, self.origin)

@@ -1,24 +1,18 @@
+from collections.abc import Collection, Iterable
 from enum import Enum
-from typing import Collection, Iterable, Optional, Union, overload
+from typing import Literal, Optional, Union, overload
 
+import advanced  # noqa: F401
 from numpy import ndarray
-from gaussianfft._kriging.api import KrigingType
 
-import advanced
+from gaussianfft._kriging.api import AnyVariogram, KrigingType
 
 Number = Union[int, float]
 
-try:
-    from typing import Literal
-
-    # More precise type annotations is available in Python 3.8
-    VARIOGRAM_TYPE = Literal[
-        'gaussian', 'exponential', 'general_exponential',
-        'spherical', 'matern32', 'matern52', 'matern72', 'constant'
-    ]
-except ImportError:
-    # Fall back to generic string
-    VARIOGRAM_TYPE = str
+VARIOGRAM_TYPE = Literal[
+    'gaussian', 'exponential', 'general_exponential',
+    'spherical', 'matern32', 'matern52', 'matern72', 'constant'
+]
 
 
 class VariogramType(Enum):
@@ -32,23 +26,22 @@ class VariogramType(Enum):
     CONSTANT = 'constant'
 
 
-class DoubleVector(object, Collection):
+class DoubleVector(Collection):
     def append(self, num: Number) -> None: ...
 
     def extend(self, iterable: Iterable[Number]) -> None: ...
 
 
-class SizeTVector(object, Collection):
+class SizeTVector(Collection):
     def append(self, num: Number) -> None: ...
 
     def extend(self, iterable: Iterable[Number]) -> None: ...
 
 
-class Variogram(object):
+class Variogram:
     @overload
     def corr(self, dx: float, dy: float, dz: float) -> float:
         """Correlation function with distance as input for 1D, 2D, and 3D."""
-        pass
 
     @overload
     def corr(self, dx: float, dy: float) -> float:...
@@ -58,7 +51,6 @@ class Variogram(object):
 
     def corr_array(self, displacements: ndarray, /) -> ndarray:
         """Return (N,) float64 correlations for (N, 1), (N, 2), or (N, 3) displacements."""
-        ...
 
 
 """
@@ -117,7 +109,6 @@ Multiple directions
 
 >>> grf.variogram('general_exponential', 1000.0, 500.0, 250.0, power=1.8)
 """
-    pass
 
 
 """
@@ -168,7 +159,6 @@ Multi-dimensional simulation
 >>> z_np.shape
 (100,200)
 """
-    pass
 
 
 @overload
@@ -200,7 +190,6 @@ Examples
 >>> import gaussianfft
 >>> gaussianfft.seed(123)
     """
-    pass
 
 
 @overload
@@ -216,7 +205,6 @@ Examples
 >>> gaussianfft.seed()
 123
     """
-    pass
 
 
 """
@@ -245,7 +233,6 @@ Examples
 >>> list(grf.simulation_size(v, nx, dx, ny, dy))
 >>>[126, 113]
 """
-    pass
 
 
 @overload
@@ -264,7 +251,7 @@ gaussianfft.conditional_simulate
 
 
 def conditional_simulate(
-        variogram: Variogram,
+    variogram: AnyVariogram,
         grid_shape: tuple[int, ...],
         grid_spacing: tuple[float, ...],
         obs_locations: ndarray,
@@ -281,8 +268,8 @@ Generates conditional Gaussian random field realizations using the selected krig
 
 Parameters
 ----------
-variogram: Variogram
-    An instance of gaussianfft.Variogram.
+variogram: AnyVariogram
+    A gaussianfft.Variogram or a covariance model, such as NonstationaryVariogram.
 grid_shape: tuple of int
     Grid sizes in x, y, z order, with 1 to 3 entries. Singleton axes are retained.
 grid_spacing: tuple of float
@@ -308,7 +295,6 @@ out: list of numpy.ndarray
     List of n conditional simulation arrays, each shaped (nx,), (nx, ny),
     or (nx, ny, nz) depending on dimensionality.
 """
-    ...
 
 
 """
@@ -316,8 +302,10 @@ gaussianfft.predict
 """
 
 
+# 3 separate overloads so that cases where calculate_stddev is True/False/unspecified get proper typing and we don't need "assert ret[1] is not None"
+@overload
 def predict(
-        variogram: Variogram,
+        variogram: AnyVariogram,
         grid_shape: tuple[int, ...],
         grid_spacing: tuple[float, ...],
         obs_locations: ndarray,
@@ -326,15 +314,15 @@ def predict(
         *,
         mean: float = 0.0,
         method: KrigingType = 'simple',
-        calculate_stddev: bool = False,
-) -> tuple[ndarray, Optional[ndarray]]:
+        calculate_stddev: Literal[True],
+) -> tuple[ndarray, ndarray]:
     """
 Returns the kriging mean and standard deviation over the grid.
 
 Parameters
 ----------
-variogram: Variogram
-    An instance of gaussianfft.Variogram.
+variogram: AnyVariogram
+    A gaussianfft.Variogram or a covariance model, such as NonstationaryVariogram.
 grid_shape: tuple of int
     Grid sizes in x, y, z order, with 1 to 3 entries. Singleton axes are retained.
 grid_spacing: tuple of float
@@ -358,4 +346,33 @@ out: tuple of (mean_field, stdev_field)
     Arrays shaped (nx,), (nx, ny), or (nx, ny, nz). stdev_field is None
     when calculate_stddev is False.
 """
-    ...
+
+
+@overload
+def predict(
+        variogram: AnyVariogram,
+        grid_shape: tuple[int, ...],
+        grid_spacing: tuple[float, ...],
+        obs_locations: ndarray,
+        obs_values: ndarray,
+        obs_uncertainties: ndarray,
+        *,
+        mean: float = 0.0,
+        method: KrigingType = 'simple',
+        calculate_stddev: Literal[False] = False,
+    ) -> tuple[ndarray, None]: ...
+
+
+@overload
+def predict(
+        variogram: AnyVariogram,
+        grid_shape: tuple[int, ...],
+        grid_spacing: tuple[float, ...],
+        obs_locations: ndarray,
+        obs_values: ndarray,
+        obs_uncertainties: ndarray,
+        *,
+        mean: float = 0.0,
+        method: KrigingType = 'simple',
+        calculate_stddev: bool,
+    ) -> tuple[ndarray, Optional[ndarray]]: ...

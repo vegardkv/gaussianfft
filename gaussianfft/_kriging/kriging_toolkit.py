@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 
 import numpy as np
+
 try:
     import scipy.linalg
     import scipy.ndimage
@@ -135,9 +136,10 @@ class SimpleKriging(Kriging):
         results = []
 
         for _ in range(n_sim):
-            uncond = self._variogram.simulate(grid)
+            uncond = variogram.simulate(grid)
             uncond_at_obs = _interpolate_at_obs(uncond, obs_coords)
-            obs_residuals = (obs.values - self.mean) - uncond_at_obs
+            simulated_noise = np.random.normal(0.0, obs.uncertainties)
+            obs_residuals = (obs.values - self.mean) - (uncond_at_obs + simulated_noise)
 
             correction, _ = self._krige(grid.shape, grid_coords, obs_residuals)
             results.append(self.mean + uncond + correction)
@@ -146,7 +148,10 @@ class SimpleKriging(Kriging):
     def _krige(self, grid_shape: tuple[int, ...], grid_coords, residuals, calculate_stddev=False):
         """Apply simple kriging to mean-adjusted observation or simulation residuals."""
         obs = self._obs
-        weights = scipy.linalg.cho_solve(self._cho_factor, residuals)
+        variogram = self._variogram
+        cho_factor = self._cho_factor
+        assert obs is not None and variogram is not None and cho_factor is not None
+        weights = scipy.linalg.cho_solve(cho_factor, residuals)
         n_grid = len(grid_coords)
         n_obs = len(obs.locations)
         chunk = _chunk_size(n_grid, n_obs)
@@ -154,15 +159,15 @@ class SimpleKriging(Kriging):
         variance_flat = np.empty(n_grid) if calculate_stddev else None
         for start in range(0, n_grid, chunk):
             end = min(start + chunk, n_grid)
-            cross_cov = self._variogram.corr_matrix(grid_coords[start:end], obs.locations)
+            cross_cov = variogram.corr_matrix(grid_coords[start:end], obs.locations)
             correction_flat[start:end] = cross_cov @ weights
-            if calculate_stddev:
-                alpha = scipy.linalg.cho_solve(self._cho_factor, cross_cov.T)
+            if variance_flat is not None:
+                alpha = scipy.linalg.cho_solve(cho_factor, cross_cov.T)
                 variance_flat[start:end] = 1.0 - np.sum(cross_cov * alpha.T, axis=1)
 
         correction = correction_flat.reshape(grid_shape)
         stddev = None
-        if calculate_stddev:
+        if variance_flat is not None:
             stddev = np.sqrt(np.maximum(variance_flat, 0.0)).reshape(grid_shape)
         return correction, stddev
 
@@ -212,7 +217,9 @@ class OrdinaryKriging(Kriging):
 
     def _ok_weights_chunk(self, cross_cov):
         """Return ordinary-kriging weights and drift for a cross-covariance chunk."""
-        beta = scipy.linalg.cho_solve(self._cho_factor, cross_cov.T)
+        cho_factor = self._cho_factor
+        assert cho_factor is not None
+        beta = scipy.linalg.cho_solve(cho_factor, cross_cov.T)
         drift = (self._alpha @ cross_cov.T - 1.0) / self._s
         return beta - np.outer(self._alpha, drift), drift
 
@@ -238,9 +245,10 @@ class OrdinaryKriging(Kriging):
         results = []
 
         for _ in range(n_sim):
-            uncond = self._variogram.simulate(grid)
+            uncond = variogram.simulate(grid)
             uncond_at_obs = _interpolate_at_obs(uncond, obs_coords)
-            obs_residuals = obs.values - uncond_at_obs
+            simulated_noise = np.random.normal(0.0, obs.uncertainties)
+            obs_residuals = obs.values - (uncond_at_obs + simulated_noise)
 
             correction, _ = self._krige(grid.shape, grid_coords, obs_residuals)
             results.append(uncond + correction)
@@ -249,6 +257,8 @@ class OrdinaryKriging(Kriging):
     def _krige(self, grid_shape: tuple[int, ...], grid_coords, residuals, calculate_stddev=False):
         """Apply ordinary kriging to observation values or simulation residuals."""
         obs = self._obs
+        variogram = self._variogram
+        assert obs is not None and variogram is not None
         n_grid = len(grid_coords)
         n_obs = len(obs.locations)
         chunk = _chunk_size(n_grid, n_obs)
@@ -256,14 +266,14 @@ class OrdinaryKriging(Kriging):
         variance_flat = np.empty(n_grid) if calculate_stddev else None
         for start in range(0, n_grid, chunk):
             end = min(start + chunk, n_grid)
-            cross_cov = self._variogram.corr_matrix(grid_coords[start:end], obs.locations)
+            cross_cov = variogram.corr_matrix(grid_coords[start:end], obs.locations)
             weights, drift = self._ok_weights_chunk(cross_cov)
             correction_flat[start:end] = weights.T @ residuals
-            if calculate_stddev:
+            if variance_flat is not None:
                 variance_flat[start:end] = 1.0 - np.sum(cross_cov * weights.T, axis=1) - drift
 
         correction = correction_flat.reshape(grid_shape)
         stddev = None
-        if calculate_stddev:
+        if variance_flat is not None:
             stddev = np.sqrt(np.maximum(variance_flat, 0.0)).reshape(grid_shape)
         return correction, stddev

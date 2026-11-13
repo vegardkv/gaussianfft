@@ -68,6 +68,7 @@ build-backend = "scikit_build_core.build"
 notebooks = [
     "marimo>=0.17.6",
     "matplotlib",
+    "plotly",
     "scipy",
 ]
 test = [
@@ -139,3 +140,12 @@ build.requires = [
 write_to = "gaussianfft/_version.py"
 # This should only be present on CI
 local_scheme = "no-local-version"
+
+[tool.ruff.lint.per-file-ignores]
+# Python 3.9 doesn't natively have "X | None", preferring "Optional[X]" instead.
+# This can be handled by "from __future__ import annotations", so if you feel up to it, do so and drop the below ignores.
+"gaussianfft/__init__.pyi" = ["PYI026", "UP007", "UP045"]
+"gaussianfft/_kriging/api.py" = ["FA100"]
+"tests/test_kriging.py" = ["RUF046"]
+# Marimo cells share imports/definitions through the reactive graph and render bare expressions.
+"notebooks/**/*.py" = ["B018", "F401", "F841", "RUF059"]
