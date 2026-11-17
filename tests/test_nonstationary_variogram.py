@@ -13,6 +13,7 @@ from gaussianfft._kriging import (
     GridSpec, GriddedAzimuth, NonstationaryVariogram, ObservationData, OrdinaryKriging,
     SimpleKriging, Variogram, predict,
 )
+from gaussianfft._kriging.api import simulate
 
 
 def swirl_azimuth(locations):
@@ -134,9 +135,9 @@ class TestNonstationarySimulation:
         expected, expected_std = grf.predict(
             *args, method=method, calculate_stddev=True, ord_kriging_max_obs_gls=max_obs_gls,
         )
-        actual, actual_std = grf.predict(
-            *args, method=method, calculate_stddev=True, ord_kriging_max_obs_gls=max_obs_gls,
-            cdn_chunk_shape=(20, 20, 1), cdn_padding_range=(1000.0, 1000.0, 0.0),
+        actual, actual_std = predict(
+            *args, method=method, calculate_stddev=True, max_obs_gls=max_obs_gls,
+            chunk_shape=(20, 20, 1), padding_range=(1000.0, 1000.0, 0.0),
         )
         np.testing.assert_allclose(actual, expected, atol=1e-10)
         np.testing.assert_allclose(actual_std, expected_std, atol=1e-7)
@@ -147,13 +148,14 @@ class TestNonstationarySimulation:
             self.variogram, self.grid.shape, self.grid.spacing,
             self.obs.locations, self.obs.values, self.obs.uncertainties,
         )
-        prediction, stddev = grf.predict(
-            *args, method=method, calculate_stddev=True, ord_kriging_max_obs_gls=max_obs_gls,
-            cdn_chunk_shape=(20, 20, 1), cdn_padding_range=(0.0, 0.0, 0.0),
+        prediction, stddev = predict(
+            *args, method=method, calculate_stddev=True, max_obs_gls=max_obs_gls,
+            chunk_shape=(20, 20, 1), padding_range=(0.0, 0.0, 0.0),
         )
-        sims = grf.conditional_simulate(
-            *args, method=method, n=2, seed=17, ord_kriging_max_obs_gls=max_obs_gls,
-            cdn_chunk_shape=(20, 20, 1), cdn_padding_range=(0.0, 0.0, 0.0),
+        grf.seed(17)
+        sims = simulate(
+            *args, method=method, n_sim=2, max_obs_gls=max_obs_gls,
+            chunk_shape=(20, 20, 1), padding_range=(0.0, 0.0, 0.0),
         )
         assert np.all(np.isfinite(prediction))
         assert np.all(np.isfinite(stddev))

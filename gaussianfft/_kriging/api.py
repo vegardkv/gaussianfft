@@ -23,10 +23,19 @@ def _as_covariance(variogram: AnyVariogram) -> Covariance:
 
 
 def _build_kriging(
-    method: KrigingType, mean: float, chunk_shape: tuple[int, ...] | None,
+    method: KrigingType, mean: float, chunk_shape: tuple[int, ...] | None | Literal['auto'],
     padding_range: tuple[float, ...] | None, max_obs_gls: int,
 ):
-    neighborhood = Neighborhood.from_parameters(chunk_shape, padding_range)
+    if chunk_shape == 'auto':
+        neighborhood = 'auto'
+    elif chunk_shape is None:
+        neighborhood = None
+    else:
+        if padding_range is None:
+            raise ValueError(
+                "padding_range must be specified when chunk_shape is not None or 'auto'"
+            )
+        neighborhood = Neighborhood(chunk_shape, padding_range)
     if method == 'simple':
         return SimpleKriging(mean=mean, neighborhood=neighborhood)
     if method == 'ordinary':
@@ -40,7 +49,7 @@ def predict(
         variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
         obs_locations, obs_values, obs_uncertainties, *,
         method: KrigingType = 'simple', mean: float = 0.0, calculate_stddev=False,
-        chunk_shape: tuple[int, ...] | None = None,
+        chunk_shape: tuple[int, ...] | None | Literal['auto'] = None,
         padding_range: tuple[float, ...] | None = None, max_obs_gls: int = 2000,
 ):
     """Predict on a grid defined by shape and spacing tuples in x, y, z order."""
@@ -54,7 +63,7 @@ def simulate(
         variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
         obs_locations, obs_values, obs_uncertainties, *,
         method: KrigingType = 'simple', mean: float = 0.0, n_sim=1,
-        chunk_shape: tuple[int, ...] | None = None,
+        chunk_shape: tuple[int, ...] | None | Literal['auto'] = None,
         padding_range: tuple[float, ...] | None = None, max_obs_gls: int = 2000,
 ):
     """Simulate on a grid defined by shape and spacing tuples in x, y, z order."""

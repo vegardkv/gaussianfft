@@ -23,11 +23,8 @@ class GridChunk:
 
 
 class GridPartition:
-    """Partition grid nodes; select observations in padded, axis-aligned cell bounds.
-
-    Cell bounds extend half a spacing beyond the outermost nodes of each chunk.
-    Neighborhood bounds are inclusive. Without chunking, all observations are used,
-    including observations outside the grid.
+    """
+    Partition grid nodes; select observations in padded, axis-aligned cell bounds.
     """
 
     def __init__(
@@ -35,10 +32,12 @@ class GridPartition:
         neighborhood: Neighborhood | None | Literal['auto'],
         obs: ObservationData,
         variogram: Covariance | None,  # Only needed when neighborhood is 'auto'
+        auto_corr_threshold: float = 0.01,  # Only used when neighborhood is 'auto'
     ):
         assert (neighborhood == 'auto' and variogram is not None) or neighborhood != 'auto'
         self._neighborhood = neighborhood
         self._variogram = variogram
+        self._auto_corr_threshold = auto_corr_threshold
         self._locations = obs.locations
         self._tree = None
         if neighborhood is not None:
@@ -58,13 +57,12 @@ class GridPartition:
             return
 
         # Automatically determine the optimal chunking and padding
-        if self._neighborhood == 'auto':
-            # Automatically determine chunk shape and padding
+        elif self._neighborhood == 'auto':
             max_padding = tuple(np.array(grid.shape) * np.array(grid.spacing))
             padding = _find_padding(
                 self._variogram,
-                len(grid.shape),
-                max_padding=max_padding,
+                max_padding,
+                corr_threshold=self._auto_corr_threshold,
             )
             chunk_shape = _find_optimal_chunk_shape(
                 padding=padding,
@@ -82,12 +80,13 @@ class GridPartition:
             return
 
         # Use the specified neighborhood for chunking and padding
-        yield from _construct_chunks(
-            self._neighborhood.chunk_shape,
-            self._neighborhood.padding,
-            grid,
-            self._tree,
-        )
+        else:
+            yield from _construct_chunks(
+                self._neighborhood.chunk_shape,
+                self._neighborhood.padding,
+                grid,
+                self._tree,
+            )
 
 
 def _construct_chunks(
@@ -124,39 +123,60 @@ def _find_optimal_chunk_shape(
         grid: GridSpec,
         observation_tree: cKDTree,
 ) -> tuple[int, ...]:
-    ratios = np.array(padding) / padding[0]
+    """Choose among a small set of sizes without constructing candidate chunks."""
+    shape = np.asarray(grid.shape)
+    extent = shape * grid.spacing
+    n_grid = float(np.prod(shape))
+    padding_cells = np.maximum(np.asarray(padding) / grid.spacing, 1.0)
+    ratios = padding_cells / padding_cells[0]
+
+    # `c_overhead` represents the overhead related to constructing each chunk,
+    # which in practice is dominated by the spatial query: query_ball_point.
+    # The total overhead depends on the number of observations, but the cKDTree
+    # ensures efficient spatial queries, so the overhead is sub-linear in nature,
+    # most likely proportional to log(#observations) instead. For simplicity,
+    # we use a fixed constant, determined by
+    #   `examples/estimate_grid_partition_overhead.py`.
+    C_OVERHEAD = 3.3e-05
+    # The remaining constants represent the computational cost associated with
+    # each chunk, and is estimated by
+    #   `examples/estimate_kriging_timing.py`.
+    C_COV_OBS = 0.0
+    C_SOLVE = 0.0
+    C_CROSS_COV = 2.273822e-08
 
     def _chunk_shape(cx: float) -> tuple[int, ...]:
-        # cx corresponds to the first chunk dimension, the other dimensions are scaled proportionally
         chunk_shape = (cx * ratios).round().astype(int)
         chunk_shape = np.clip(chunk_shape, 1, grid.shape)
         return tuple(int(size) for size in chunk_shape)
 
-    def _estimate_time(cx: float):
-        chunk_shape = _chunk_shape(cx)
-        t_current = 0
-        for chunk in _construct_chunks(chunk_shape, padding, grid, observation_tree):
-            t_current += _estimate_chunk_time(chunk)
-        return t_current
+    def _estimate_time(chunk_shape: tuple[int, ...]) -> float:
+        n_chunks = float(np.prod(np.ceil(shape / chunk_shape)))
+        padded_extent = np.minimum(
+            np.asarray(chunk_shape) * grid.spacing + 2 * np.asarray(padding), extent,
+        )
+        n_obs = observation_tree.n * float(np.prod(padded_extent / extent))
+        return (
+            n_chunks * (C_OVERHEAD + C_COV_OBS * n_obs**2 + C_SOLVE * n_obs**3)
+            + C_CROSS_COV * n_obs * n_grid
+        )
 
-    # Treat this as a floating-point optimization problem. The solution is highly
-    # hardware dependent, so a perfectly accurate solution is not really necessary
-    solution = minimize_scalar(
-        _estimate_time, bounds=(1e-3, grid.shape[0]), method='bounded'
-    )
-
-    return _chunk_shape(solution.x)
+    max_cx = float(np.max(shape / ratios))
+    candidates = [grid.shape] + [_chunk_shape(cx) for cx in np.geomspace(1.0, max_cx, 16)]
+    return min(candidates, key=_estimate_time)
 
 
 def _find_padding(
         variogram: Covariance,
-        ndim: int,
         max_padding: tuple[float, ...],
+        *,
+        corr_threshold: float = 0.01,
 ) -> tuple[float, ...]:
-    """Approximate the axis-aligned 5% correlation distance, capped by physical grid extents."""
-    # TODO: This does take into account anisotropic variograms
+    """ Estimates the axis-aligned padding distance based on a target correlation threshold. """
+    # TODO: This does take into account non-stationary variograms
     # TODO: Padding matches variogram range, but should instead reflect the desired 
     #       accuracy-tradeoff when using common data neighborhoods
+    ndim = len(max_padding)
     origin = np.zeros((1, ndim))
 
     def _correlation(distance: float, axis: int) -> float:
@@ -166,35 +186,19 @@ def _find_padding(
 
     # Compute the axis-aligned padding in each dimension
     sol_x = minimize_scalar(
-        lambda x: (_correlation(x, 0) - 0.05) ** 2,
+        lambda x: (_correlation(x, 0) - corr_threshold) ** 2,
         bounds=(0, max_padding[0]), method='bounded',
     )
     if ndim == 1:
         return (sol_x.x,)
     sol_y = minimize_scalar(
-        lambda y: (_correlation(y, 1) - 0.05) ** 2,
+        lambda y: (_correlation(y, 1) - corr_threshold) ** 2,
         bounds=(0, max_padding[1]), method='bounded',
     )
     if ndim == 2:
         return (sol_x.x, sol_y.x)
     sol_z = minimize_scalar(
-        lambda z: (_correlation(z, 2) - 0.05) ** 2,
+        lambda z: (_correlation(z, 2) - corr_threshold) ** 2,
         bounds=(0, max_padding[2]), method='bounded',
     )
     return (sol_x.x, sol_y.x, sol_z.x)
-
-
-def _estimate_chunk_time(chunk: GridChunk) -> float:
-    # See examples/estimate_kriging_time.py for how these constants were estimated
-    #   T_cov_obs   = C_cov_obs   * N_obs^2
-    #   T_cross_cov = C_cross_cov * N_obs   * N_grid
-    #   T_solve     = C_solve     * N_obs^3
-    _C_COV_OBS = 0
-    _C_SOLVE = 0
-    _C_CROSS_COV = 2.273822e-08
-    n_obs = len(chunk.observation_indices)
-    n_grid = np.prod(chunk.grid.shape)
-    t_cov_obs = _C_COV_OBS * n_obs**2
-    t_cross_cov = _C_CROSS_COV * n_obs * n_grid
-    t_solve = _C_SOLVE * n_obs**3
-    return t_cov_obs + t_cross_cov + t_solve

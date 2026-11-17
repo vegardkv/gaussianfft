@@ -1,5 +1,6 @@
 from __future__ import annotations
 import abc
+from typing import Literal
 
 import numpy as np
 try:
@@ -53,7 +54,9 @@ class SimpleKriging(Kriging):
     applied. Unconditional simulations always cover the entire grid.
     """
 
-    def __init__(self, mean: float = 0.0, neighborhood: Neighborhood | None = None):
+    def __init__(
+        self, mean: float = 0.0, neighborhood: Neighborhood | None | Literal['auto'] = None,
+    ):
         self.mean = float(mean)
         self._neighborhood = neighborhood
         self._obs: ObservationData | None = None
@@ -135,7 +138,10 @@ class OrdinaryKriging(Kriging):
     with local residual errors under the full covariance model.
     """
 
-    def __init__(self, neighborhood: Neighborhood | None = None, *, max_obs_gls: int = 2000):
+    def __init__(
+        self, neighborhood: Neighborhood | None | Literal['auto'] = None,
+        *, max_obs_gls: int = 2000,
+    ):
         if (
             not isinstance(max_obs_gls, (int, np.integer))
             or isinstance(max_obs_gls, (bool, np.bool_)) or max_obs_gls < 0

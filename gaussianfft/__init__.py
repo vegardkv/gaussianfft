@@ -53,11 +53,15 @@ def conditional_simulate(
         n=1,
         seed=None,
         method: 'api.KrigingType' = 'simple',
-        cdn_chunk_shape: 'tuple[int, ...] | None' = None,
-        cdn_padding_range: 'tuple[float, ...] | None' = None,
+        use_neighborhood: bool = False,
         ord_kriging_max_obs_gls: int = 2000,
 ):
-    """Generate conditional fields using shape and spacing tuples in x, y, z order."""
+    """Generate conditional fields using shape and spacing tuples in x, y, z order.
+
+    Set use_neighborhood=True to approximate the kriging correction using common
+    data neighborhoods chosen automatically. False uses all observations.
+    The unconditional simulation remains global.
+    """
     from gaussianfft._kriging import api
 
     if seed is not None:
@@ -65,7 +69,7 @@ def conditional_simulate(
     return api.simulate(
         variogram_, grid_shape, grid_spacing, obs_locations, obs_values, obs_uncertainties,
         mean=simple_kriging_mean, n_sim=n, method=method,
-        chunk_shape=cdn_chunk_shape, padding_range=cdn_padding_range, max_obs_gls=ord_kriging_max_obs_gls,
+        chunk_shape='auto' if use_neighborhood else None, max_obs_gls=ord_kriging_max_obs_gls,
     )
 
 
@@ -80,15 +84,18 @@ def predict(
         simple_kriging_mean=0.0,
         method: 'api.KrigingType' = 'simple',
         calculate_stddev=False,
-        cdn_chunk_shape: 'tuple[int, ...] | None' = None,
-        cdn_padding_range: 'tuple[float, ...] | None' = None,
+        use_neighborhood: bool = False,
         ord_kriging_max_obs_gls: int = 2000,
 ):
-    """Predict a field using shape and spacing tuples in x, y, z order."""
+    """Predict a field using shape and spacing tuples in x, y, z order.
+
+    Set use_neighborhood=True to approximate kriging using common data
+    neighborhoods chosen automatically. False uses all observations.
+    """
     from gaussianfft._kriging import api
 
     return api.predict(
         variogram_, grid_shape, grid_spacing, obs_locations, obs_values, obs_uncertainties,
         mean=simple_kriging_mean, method=method, calculate_stddev=calculate_stddev,
-        chunk_shape=cdn_chunk_shape, padding_range=cdn_padding_range, max_obs_gls=ord_kriging_max_obs_gls,
+        chunk_shape='auto' if use_neighborhood else None, max_obs_gls=ord_kriging_max_obs_gls,
     )
