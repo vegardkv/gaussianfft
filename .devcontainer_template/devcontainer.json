@@ -1,0 +1,60 @@
+{
+  "name": "GaussianFFT",
+  "build": {
+    "dockerfile": "Dockerfile",
+    // Use the repository root so COPY can access pyproject.toml and build-packages/.
+    "context": ".."
+  },
+  
+  // Prevent the agent from modifying the .devcontainer to expand its capabilities
+  // I -think- VSCode does this by default, much like mounting the workspace folder is, but am leaving it until I confirm it
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer,target=/workspaces/${localWorkspaceFolderBasename}/.devcontainer,type=bind,readonly",
+    // Persist extensions and downloaded VSIXs across container rebuilds.
+    // If remoteUser is root, change /home/vscode to /root in both targets.
+    "source=${devcontainerId}-extensions,target=/home/vscode/.vscode-server/extensions,type=volume",
+    "source=${devcontainerId}-vsix-cache,target=/home/vscode/.vscode-server/data/CachedExtensionVSIXs,type=volume"
+  ],
+  
+  // If you don't want the agent to git pull/push, giving it access to the SSH agent is a security risk, so merits a warning if it happens by accidental VSCode magic
+  "postAttachCommand": "ssh-add -l >/dev/null 2>&1; rc=$?; case \"$rc\" in 0) echo 'WARNING: SSH agent is reachable in container and has identities the agent may use.';; 1) echo 'WARNING: SSH agent is reachable in container (but has no identities).';; 2) :;; *) echo \"WARNING: ssh-add -l returned $rc. Who knows what that means?\";; esac",
+
+  // The below section sets the remote user for the container. What you should use depends on your containerization setup. If you use WSLc, I am told setting remoteUser to VSCode works
+  // but on rootless Docker this made UID mapping incorrect and meant the container processes could not edit workspace files. I therefore had to use the below, but YMMV
+
+  "remoteUser": "vscode",
+  // "remoteUser": "root", // root -inside- the container, not on host
+  // "runArgs": [  // Drop all capabilities from container root anyway so it can't do much - good practice in general, but not supported by WSLc
+    // "--cap-drop=ALL",
+    // "--security-opt=no-new-privileges:true"
+  // ],
+
+  // Set in Dockerfile, but overriden by container environment, so we set it here as well
+  "remoteEnv": {"PATH": "/opt/venv/bin:${containerEnv:PATH}"},
+  
+
+  // Editable rebuild means that the package is built on every Python import, so you cannot accidentally forget to build. 
+  // For manual rebuilds instead, remove editable.rebuild=true above and remember to re-run pip install when changing native/C++ code
+  "postCreateCommand": "/opt/venv/bin/python -m pip install --no-build-isolation -e . -Cbuild-dir=build/devcontainer -Ccmake.define.CMAKE_EXPORT_COMPILE_COMMANDS=ON -Ceditable.rebuild=true && /opt/venv/bin/python -c 'import gaussianfft'",
+  "waitFor": "postCreateCommand",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cpptools"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/venv/bin/python",
+        "python.analysis.inlayHints.variableTypes": true,
+        "python.analysis.typeCheckingMode": "basic",  // disable if you don't like the type checker yelling at you
+        "C_Cpp.intelliSenseEngine": "disabled",
+        "clangd.arguments": ["--compile-commands-dir=build/devcontainer"],
+        "workbench.colorCustomizations": {}  // I like to set ugly colors on host chat and override them here so I know I'm in a dev container
+      }
+    }
+  }
+}

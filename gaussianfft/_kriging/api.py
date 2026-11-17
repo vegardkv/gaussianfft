@@ -1,4 +1,6 @@
-from typing import Literal, Union
+from typing import Literal, Optional, Union, overload
+
+import numpy as np
 
 import gaussianfft
 from gaussianfft._kriging.covariance import Covariance
@@ -31,11 +33,38 @@ def _build_kriging(method: KrigingType, mean: float):
     return estimator
 
 
+# Literal flags narrow the result; the final overload covers a dynamic bool.
+@overload
 def predict(
         variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
         obs_locations, obs_values, obs_uncertainties, *,
-        method: KrigingType = 'simple', mean: float = 0.0, calculate_stddev=False,
-):
+        method: KrigingType = 'simple', mean: float = 0.0,
+        calculate_stddev: Literal[True],
+) -> tuple[np.ndarray, np.ndarray]: ...
+
+
+@overload
+def predict(
+        variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
+        obs_locations, obs_values, obs_uncertainties, *,
+        method: KrigingType = 'simple', mean: float = 0.0,
+        calculate_stddev: Literal[False] = False,
+) -> tuple[np.ndarray, None]: ...
+
+
+@overload
+def predict(
+        variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
+        obs_locations, obs_values, obs_uncertainties, *,
+        method: KrigingType = 'simple', mean: float = 0.0, calculate_stddev: bool,
+) -> tuple[np.ndarray, Optional[np.ndarray]]: ...
+
+
+def predict(
+        variogram: AnyVariogram, grid_shape: tuple[int, ...], grid_spacing: tuple[float, ...],
+        obs_locations, obs_values, obs_uncertainties, *,
+        method: KrigingType = 'simple', mean: float = 0.0, calculate_stddev: bool = False,
+) -> tuple[np.ndarray, Optional[np.ndarray]]:
     """Predict on a grid defined by shape and spacing tuples in x, y, z order."""
     grid = GridSpec(grid_shape, grid_spacing)
     obs = ObservationData(obs_locations, obs_values, obs_uncertainties)

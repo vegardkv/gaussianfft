@@ -208,6 +208,14 @@ class TestSharedNoise:
         third = SimpleKriging().simulate(self.grid, self.obs, self.variogram)
         np.testing.assert_array_equal(third[0], first[1])
 
+    def test_component_reseeding_preserves_numpy_stream(self):
+        np.random.seed(123)
+        grf.seed(9)
+        expected = np.random.normal(size=8)
+        np.random.seed(123)
+        self.variogram.simulate(self.grid)
+        np.testing.assert_array_equal(np.random.normal(size=8), expected)
+
     @pytest.mark.parametrize('kriging', [SimpleKriging(), OrdinaryKriging()])
     def test_conditional_simulation_honours_observations(self, kriging):
         grf.seed(11)
