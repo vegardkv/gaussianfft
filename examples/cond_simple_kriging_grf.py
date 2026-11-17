@@ -43,11 +43,11 @@ def main():
     avg_cond = np.mean(cond_stack, axis=0)
 
     pred_nonzero_mean, _std_nonzero_mean = grf.predict(
-        variogram, (nx, ny), (dx, dy), obs_pt, obs_val, obs_unc, mean=1.0
+        variogram, (nx, ny), (dx, dy), obs_pt, obs_val, obs_unc, simple_kriging_mean=1.0
     )
     pred_zero_mean, std_zero_mean = grf.predict(
         variogram, (nx, ny), (dx, dy), obs_pt, obs_val, obs_unc,
-        mean=0.0, calculate_stddev=True
+        simple_kriging_mean=0.0, calculate_stddev=True
     )
 
     # Cross-section through observations

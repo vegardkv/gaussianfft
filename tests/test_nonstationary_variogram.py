@@ -13,6 +13,7 @@ from gaussianfft._kriging import (
     GridSpec, GriddedAzimuth, NonstationaryVariogram, ObservationData, OrdinaryKriging,
     SimpleKriging, Variogram, predict,
 )
+from gaussianfft._kriging.api import simulate
 
 
 def swirl_azimuth(locations):
@@ -122,6 +123,46 @@ class TestNonstationarySimulation:
         for loc, value in zip(self.obs.locations, self.obs.values):
             idx = tuple(np.rint(loc / self.grid.spacing).astype(int))
             assert abs(prediction[idx] - value) < 1e-6
+            for sim in sims:
+                assert abs(sim[idx] - value) < 1e-4
+
+    @pytest.mark.parametrize('method,max_obs_gls', [('simple', 2000), ('ordinary', 2000), ('ordinary', 0)])
+    def test_cdn_full_padding_matches_global_prediction(self, method, max_obs_gls):
+        args = (
+            self.variogram, self.grid.shape, self.grid.spacing,
+            self.obs.locations, self.obs.values, self.obs.uncertainties,
+        )
+        expected, expected_std = grf.predict(
+            *args, method=method, calculate_stddev=True, ord_kriging_max_obs_gls=max_obs_gls,
+        )
+        actual, actual_std = predict(
+            *args, method=method, calculate_stddev=True, max_obs_gls=max_obs_gls,
+            chunk_shape=(20, 20, 1), padding_range=(1000.0, 1000.0, 0.0),
+        )
+        np.testing.assert_allclose(actual, expected, atol=1e-10)
+        np.testing.assert_allclose(actual_std, expected_std, atol=1e-7)
+
+    @pytest.mark.parametrize('method,max_obs_gls', [('simple', 2000), ('ordinary', 2000), ('ordinary', 0)])
+    def test_cdn_local_prediction_and_simulation_honour_observations(self, method, max_obs_gls):
+        args = (
+            self.variogram, self.grid.shape, self.grid.spacing,
+            self.obs.locations, self.obs.values, self.obs.uncertainties,
+        )
+        prediction, stddev = predict(
+            *args, method=method, calculate_stddev=True, max_obs_gls=max_obs_gls,
+            chunk_shape=(20, 20, 1), padding_range=(0.0, 0.0, 0.0),
+        )
+        grf.seed(17)
+        sims = simulate(
+            *args, method=method, n_sim=2, max_obs_gls=max_obs_gls,
+            chunk_shape=(20, 20, 1), padding_range=(0.0, 0.0, 0.0),
+        )
+        assert np.all(np.isfinite(prediction))
+        assert np.all(np.isfinite(stddev))
+        for loc, value in zip(self.obs.locations, self.obs.values):
+            idx = tuple(np.rint(loc / self.grid.spacing).astype(int))
+            assert abs(prediction[idx] - value) < 1e-6
+            assert stddev[idx] < 2e-5
             for sim in sims:
                 assert abs(sim[idx] - value) < 1e-4
 

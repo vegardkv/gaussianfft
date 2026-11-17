@@ -271,10 +271,12 @@ def conditional_simulate(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        simple_kriging_mean: float = 0.0,
         n: int = 1,
         seed: Optional[int] = None,
         method: KrigingType = 'simple',
+        use_neighborhood: bool = False,
+        ord_kriging_max_obs_gls: int = 2000,
 ) -> list[ndarray]:
     """
 Generates conditional Gaussian random field realizations using the selected kriging method.
@@ -293,7 +295,7 @@ obs_values: ndarray
     Array of shape (N,) with observed values.
 obs_uncertainties: ndarray
     Array of shape (N,) with observation uncertainties (standard deviations).
-mean: float, optional
+simple_kriging_mean: float, optional
     Constant prior mean of the field (simple kriging only). Default is 0.0.
 n: int, optional
     Number of realizations to generate. Default is 1.
@@ -301,6 +303,14 @@ seed: int, optional
     Random seed. Sets the global seed before simulation. Default is None (no change).
 method: {'simple', 'ordinary'}, optional
     Kriging method. Default is 'simple'.
+use_neighborhood: bool, optional
+    Approximate the kriging correction using common data neighborhoods with
+    automatically chosen sizes and padding. Default is False (use all observations).
+    Unconditional simulation remains global; only its correction is localized.
+ord_kriging_max_obs_gls: int, optional
+    Maximum observation count for ordinary-kriging GLS mean estimation.
+    Default is 2000. Larger sets use diagonal-covariance WLS; zero forces WLS.
+    Ignored for simple kriging.
 
 Returns
 -------
@@ -324,9 +334,11 @@ def predict(
         obs_values: ndarray,
         obs_uncertainties: ndarray,
         *,
-        mean: float = 0.0,
+        simple_kriging_mean: float = 0.0,
         method: KrigingType = 'simple',
         calculate_stddev: bool = False,
+        use_neighborhood: bool = False,
+        ord_kriging_max_obs_gls: int = 2000,
 ) -> tuple[ndarray, Optional[ndarray]]:
     """
 Returns the kriging mean and standard deviation over the grid.
@@ -345,12 +357,20 @@ obs_values: ndarray
     Array of shape (N,) with observed values.
 obs_uncertainties: ndarray
     Array of shape (N,) with observation uncertainties (standard deviations).
-mean: float, optional
+simple_kriging_mean: float, optional
     Constant prior mean of the field (simple kriging only). Default is 0.0.
 method: {'simple', 'ordinary'}, optional
     Kriging method. Default is 'simple'.
 calculate_stddev: bool, optional
     Whether to calculate the standard deviation. Default is False.
+use_neighborhood: bool, optional
+    Approximate kriging using common data neighborhoods with automatically chosen
+    sizes and padding. Default is False (use all observations).
+ord_kriging_max_obs_gls: int, optional
+    Maximum observation count for ordinary-kriging GLS mean estimation.
+    Default is 2000. Larger sets use diagonal-covariance WLS; zero forces WLS.
+    Ignored for simple kriging. Ordinary standard deviations include global mean
+    uncertainty under the full covariance model, also when WLS estimates the mean.
 
 Returns
 -------

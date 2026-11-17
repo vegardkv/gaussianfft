@@ -7,7 +7,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage import map_coordinates
 import gaussianfft as grf
-from gaussianfft._kriging import GridSpec, ObservationData, OrdinaryKriging, Variogram
+from gaussianfft._kriging.grid_spec import GridSpec
+from gaussianfft._kriging.kriging_toolkit import OrdinaryKriging
+from gaussianfft._kriging.observation_data import ObservationData
+from gaussianfft._kriging.variogram import Variogram
 
 
 def _interp(field, xs, ys, dx, dy):

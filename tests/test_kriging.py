@@ -9,7 +9,39 @@ if platform.python_implementation() == 'PyPy':
     pytest.skip('Kriging requires SciPy, which is unavailable on PyPy', allow_module_level=True)
 
 import gaussianfft as grf
-from gaussianfft._kriging import ObservationData, OrdinaryKriging, Variogram, predict
+from gaussianfft._kriging.api import predict
+from gaussianfft._kriging.api import simulate
+from gaussianfft._kriging.kriging_toolkit import OrdinaryKriging
+from gaussianfft._kriging.observation_data import ObservationData
+from gaussianfft._kriging.variogram import Variogram
+
+
+@pytest.mark.parametrize('use_neighborhood', [False, True])
+@pytest.mark.parametrize('method', ['simple', 'ordinary'])
+def test_public_neighborhood_toggle(use_neighborhood, method):
+    args = (
+        grf.variogram('exponential', main_range=15.0, perp_range=10.0),
+        (12, 10), (5.0, 5.0), np.array([[0.0, 0.0], [55.0, 45.0]]),
+        np.array([1.0, -0.5]), np.zeros(2),
+    )
+    chunk_shape = 'auto' if use_neighborhood else None
+    expected, expected_std = predict(
+        *args, method=method, mean=0.5, calculate_stddev=True, chunk_shape=chunk_shape,
+    )
+    actual, actual_std = grf.predict(
+        *args, method=method, simple_kriging_mean=0.5, calculate_stddev=True,
+        use_neighborhood=use_neighborhood,
+    )
+    np.testing.assert_allclose(actual, expected)
+    np.testing.assert_allclose(actual_std, expected_std)
+
+    grf.seed(42)
+    expected_sims = simulate(*args, method=method, mean=0.5, n_sim=2, chunk_shape=chunk_shape)
+    actual_sims = grf.conditional_simulate(
+        *args, method=method, simple_kriging_mean=0.5, n=2, seed=42,
+        use_neighborhood=use_neighborhood,
+    )
+    np.testing.assert_allclose(actual_sims, expected_sims)
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +228,7 @@ class TestSimpleKriging2D:
         sims = grf.conditional_simulate(
             self.variogram, (self.nx, self.ny), (self.dx, self.dy),
             obs_locations, obs_values, obs_uncertainties,
-            mean=mean, n=1,
+            simple_kriging_mean=mean, n=1,
         )
 
         assert len(sims) == 1
