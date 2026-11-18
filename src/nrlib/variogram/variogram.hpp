@@ -59,6 +59,12 @@ public:
   double              GetDipAngle()     const {return dip_angle_;}
   double              GetStdDev()       const {return sqrt(var_);}
 
+  /// Axis-aligned extents of the normalized-distance ellipsoid in the
+  /// active dimensions, with omitted coordinates fixed at zero.
+  void GetAxisAlignedExtents(double & x) const;
+  void GetAxisAlignedExtents(double & x, double & y) const;
+  void GetAxisAlignedExtents(double & x, double & y, double & z) const;
+
   void RotateAngles(double azimuth_angle, double dip_angle = 0.0);
   void SetAngles(double azimuth_angle, double dip_angle = 0.0);
   void SetRangeX(double r);

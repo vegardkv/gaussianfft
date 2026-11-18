@@ -236,6 +236,34 @@ double Variogram::GetVariogram(double dx) const
   return var_* (1 - GetCorr(dx));
 }
 
+void Variogram::GetAxisAlignedExtents(double & x) const
+{
+  x = 1.0 / std::sqrt(txx_);
+}
+
+void Variogram::GetAxisAlignedExtents(double & x, double & y) const
+{
+  // Intersect the ellipsoid with z = 0 before projecting it onto x and y.
+  double horizontal_range = 1.0 / std::hypot(std::cos(dip_angle_) / range_x_,
+                                             std::sin(dip_angle_) / range_z_);
+  double cos_rot = std::cos(azimuth_angle_);
+  double sin_rot = std::sin(azimuth_angle_);
+  x = std::hypot(horizontal_range * cos_rot, range_y_ * sin_rot);
+  y = std::hypot(horizontal_range * sin_rot, range_y_ * cos_rot);
+}
+
+void Variogram::GetAxisAlignedExtents(double & x, double & y, double & z) const
+{
+  double cos_rot = std::cos(azimuth_angle_);
+  double sin_rot = std::sin(azimuth_angle_);
+  double cos_dip = std::cos(dip_angle_);
+  double sin_dip = std::sin(dip_angle_);
+  double horizontal_range = std::hypot(range_x_ * cos_dip, range_z_ * sin_dip);
+  x = std::hypot(horizontal_range * cos_rot, range_y_ * sin_rot);
+  y = std::hypot(horizontal_range * sin_rot, range_y_ * cos_rot);
+  z = std::hypot(range_x_ * sin_dip, range_z_ * cos_dip);
+}
+
 void Variogram::EstimateFactors()
 {
   // Calculate factors:

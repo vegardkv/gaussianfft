@@ -7,9 +7,63 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <cmath>
+#include <memory>
+
 using namespace NRLib;
 
 BOOST_AUTO_TEST_SUITE( TestGaussianField )
+
+BOOST_AUTO_TEST_CASE( AxisAlignedExtents )
+{
+  const double pi = std::acos(-1.0);
+  std::unique_ptr<Variogram> v(Variogram::Create(Variogram::EXPONENTIAL, 1.5, 10.0, 2.0, 1.0));
+  double x, y, z;
+  v->GetAxisAlignedExtents(x, y, z);
+  BOOST_CHECK_CLOSE(x, 10.0, 1e-10);
+  BOOST_CHECK_CLOSE(y, 2.0, 1e-10);
+  BOOST_CHECK_CLOSE(z, 1.0, 1e-10);
+
+  v->SetAngles(pi / 4.0);
+  v->GetAxisAlignedExtents(x);
+  BOOST_CHECK_CLOSE(x, std::sqrt(100.0 / 13.0), 1e-10);
+  BOOST_CHECK_CLOSE(v->GetCorr(x), std::exp(-3.0), 1e-10);
+  v->GetAxisAlignedExtents(x, y);
+  BOOST_CHECK_CLOSE(x, std::sqrt(52.0), 1e-10);
+  BOOST_CHECK_CLOSE(y, std::sqrt(52.0), 1e-10);
+  BOOST_CHECK_CLOSE(v->GetCorr(x, x * 48.0 / 52.0), std::exp(-3.0), 1e-10);
+
+  v->SetRanges(100.0, 20.0, 10.0);
+  v->SetAngles(0.0, pi / 4.0);
+  v->GetAxisAlignedExtents(x, y);
+  BOOST_CHECK_CLOSE(x, std::sqrt(20000.0 / 101.0), 1e-10);
+  BOOST_CHECK_CLOSE(y, 20.0, 1e-10);
+  v->GetAxisAlignedExtents(x, y, z);
+  BOOST_CHECK_CLOSE(x, std::sqrt(5050.0), 1e-10);
+  BOOST_CHECK_CLOSE(y, 20.0, 1e-10);
+  BOOST_CHECK_CLOSE(z, std::sqrt(5050.0), 1e-10);
+  BOOST_CHECK_CLOSE(v->GetCorr(x, 0.0, x * 99.0 / 101.0), std::exp(-3.0), 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE( AxisAlignedExtentsWithAzimuthAndDip )
+{
+  const double pi = std::acos(-1.0);
+  const double azimuth = pi / 6.0;
+  const double dip = pi / 9.0;
+  const double c = std::cos(azimuth), s = std::sin(azimuth);
+  const double cd = std::cos(dip), sd = std::sin(dip);
+  const double horizontal_squared = 10000.0 * cd * cd + 100.0 * sd * sd;
+  std::unique_ptr<Variogram> v(Variogram::Create(
+    Variogram::EXPONENTIAL, 1.5, 100.0, 20.0, 10.0, azimuth, dip));
+  double x, y, z;
+  v->GetAxisAlignedExtents(x, y, z);
+  BOOST_CHECK_CLOSE(x, std::sqrt(horizontal_squared * c * c + 400.0 * s * s), 1e-10);
+  BOOST_CHECK_CLOSE(y, std::sqrt(horizontal_squared * s * s + 400.0 * c * c), 1e-10);
+  BOOST_CHECK_CLOSE(z, std::sqrt(10000.0 * sd * sd + 100.0 * cd * cd), 1e-10);
+  double tangent_y = c * s * (horizontal_squared - 400.0) / x;
+  double tangent_z = c * cd * sd * (10000.0 - 100.0) / x;
+  BOOST_CHECK_CLOSE(v->GetCorr(x, tangent_y, tangent_z), std::exp(-3.0), 1e-9);
+}
 
 BOOST_AUTO_TEST_CASE( Sim2dComparison )
 {
