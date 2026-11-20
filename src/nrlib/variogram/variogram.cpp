@@ -19,6 +19,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <stdio.h>
 #include <assert.h>
@@ -238,30 +240,22 @@ double Variogram::GetVariogram(double dx) const
 
 void Variogram::GetAxisAlignedExtents(double & x) const
 {
-  x = 1.0 / std::sqrt(txx_);
+  x = range_x_;
 }
 
 void Variogram::GetAxisAlignedExtents(double & x, double & y) const
 {
-  // Intersect the ellipsoid with z = 0 before projecting it onto x and y.
-  double horizontal_range = 1.0 / std::hypot(std::cos(dip_angle_) / range_x_,
-                                             std::sin(dip_angle_) / range_z_);
-  double cos_rot = std::cos(azimuth_angle_);
-  double sin_rot = std::sin(azimuth_angle_);
-  x = std::hypot(horizontal_range * cos_rot, range_y_ * sin_rot);
-  y = std::hypot(horizontal_range * sin_rot, range_y_ * cos_rot);
+  x = std::max(range_x_, range_y_);
+  // Special case if azimuth_angle_ is 0. Can potentially cause some
+  // issues for small azimuth values, but it is backwards compatible
+  // with earlier versions of the code.
+  y = azimuth_angle_ == 0.0 ? range_y_ : x;
 }
 
 void Variogram::GetAxisAlignedExtents(double & x, double & y, double & z) const
 {
-  double cos_rot = std::cos(azimuth_angle_);
-  double sin_rot = std::sin(azimuth_angle_);
-  double cos_dip = std::cos(dip_angle_);
-  double sin_dip = std::sin(dip_angle_);
-  double horizontal_range = std::hypot(range_x_ * cos_dip, range_z_ * sin_dip);
-  x = std::hypot(horizontal_range * cos_rot, range_y_ * sin_rot);
-  y = std::hypot(horizontal_range * sin_rot, range_y_ * cos_rot);
-  z = std::hypot(range_x_ * sin_dip, range_z_ * cos_dip);
+  GetAxisAlignedExtents(x, y);
+  z = std::hypot(range_x_ * std::sin(dip_angle_), range_z_ * std::cos(dip_angle_));
 }
 
 void Variogram::EstimateFactors()
