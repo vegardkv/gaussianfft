@@ -236,8 +236,8 @@ def simulation_size(variogram: Variogram, nx: int, dx: float, ny: int, dy: float
     """
 Function for determining the grid size after padding in order to assess the
 complexity of the problem. Returns bindings to a vector with up to three elements
-with the number of grid cells after the grid has been padded. Signature is the
-same as gaussianfft.simulate.
+with the requested number of grid cells after padding. The actual FFT grid may be
+larger for computational efficiency. Signature is the same as gaussianfft.simulate.
 
 Examples
 --------

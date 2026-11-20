@@ -19,6 +19,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 // EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 #include <stdio.h>
 #include <assert.h>
@@ -234,6 +236,26 @@ double Variogram::GetVariogram(double dx, double dy) const
 double Variogram::GetVariogram(double dx) const
 {
   return var_* (1 - GetCorr(dx));
+}
+
+void Variogram::GetAxisAlignedExtents(double & x) const
+{
+  x = range_x_;
+}
+
+void Variogram::GetAxisAlignedExtents(double & x, double & y) const
+{
+  x = std::max(range_x_, range_y_);
+  // Special case if azimuth_angle_ is 0. Can potentially cause some
+  // issues for small azimuth values, but it is backwards compatible
+  // with earlier versions of the code.
+  y = azimuth_angle_ == 0.0 ? range_y_ : x;
+}
+
+void Variogram::GetAxisAlignedExtents(double & x, double & y, double & z) const
+{
+  GetAxisAlignedExtents(x, y);
+  z = std::hypot(range_x_ * std::sin(dip_angle_), range_z_ * std::cos(dip_angle_));
 }
 
 void Variogram::EstimateFactors()
