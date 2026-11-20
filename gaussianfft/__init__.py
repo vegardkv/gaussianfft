@@ -65,8 +65,7 @@ def nonstationary_variogram(
     *,
     azimuth_callable: Callable[[np.ndarray], np.ndarray] | None = None,
     gridded_azimuth_values: np.ndarray | None = None,
-    gridded_azimuth_shape: tuple[int, ...] | None = None,
-    gridded_azimuth_spacing: np.ndarray | None = None,
+    gridded_azimuth_spacing: tuple[float, ...] | None = None,
     dip: float = 0.0,
     power: float = 1.5,
 ):
@@ -77,7 +76,6 @@ def nonstationary_variogram(
         type_, main_range, perp_range, depth_range,
         azimuth_callable=azimuth_callable,
         gridded_azimuth_values=gridded_azimuth_values,
-        gridded_azimuth_shape=gridded_azimuth_shape,
         gridded_azimuth_spacing=gridded_azimuth_spacing,
         dip=dip,
         power=power,

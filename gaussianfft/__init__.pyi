@@ -133,8 +133,7 @@ def nonstationary_variogram(
     *,
     azimuth_callable: Optional[Callable[[ndarray], ndarray]] = None,
     gridded_azimuth_values: Optional[ndarray] = None,
-    gridded_azimuth_shape: Optional[tuple[int, ...]] = None,
-    gridded_azimuth_spacing: Optional[ndarray] = None,
+    gridded_azimuth_spacing: Optional[tuple[float, ...]] = None,
     dip: float = 0.0,
     power: float = 1.5,
 ) -> NonstationaryVariogram: ...

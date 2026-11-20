@@ -294,20 +294,16 @@ def create_nonstationary_variogram(
     *,
     azimuth_callable: Callable[[np.ndarray], np.ndarray] | None = None,
     gridded_azimuth_values: np.ndarray | None = None,
-    gridded_azimuth_shape: tuple[int, ...] | None = None,
-    gridded_azimuth_spacing: np.ndarray | None = None,
+    gridded_azimuth_spacing: tuple[float, ...] | None = None,
     dip: float = 0.0,
     power: float = 1.5,
 ):
     if azimuth_callable is not None:
         azimuth = azimuth_callable
-    elif (
-        gridded_azimuth_values is not None
-        and gridded_azimuth_shape is not None
-        and gridded_azimuth_spacing is not None
-    ):
+    elif gridded_azimuth_values is not None and gridded_azimuth_spacing is not None:
         grid_spec = GridSpec(
-            shape=gridded_azimuth_shape, spacing=gridded_azimuth_spacing
+            shape=gridded_azimuth_values.shape,
+            spacing=gridded_azimuth_spacing,
         )
         azimuth = GriddedAzimuth(gridded_azimuth_values, grid_spec)
     else:

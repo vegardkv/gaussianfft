@@ -14,8 +14,7 @@ variogram = grf.nonstationary_variogram(
     main_range=120.0,
     perp_range=20.0,
     gridded_azimuth_values=azimuths,
-    gridded_azimuth_shape=shape,
-    gridded_azimuth_spacing=np.array(spacing),
+    gridded_azimuth_spacing=spacing,
 )
 
 field, = grf.conditional_simulate(
