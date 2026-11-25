@@ -63,23 +63,23 @@ class TestVariogram(unittest.TestCase):
                                displacements.astype(np.int64)):
                     with self.subTest(kind=kind, ndims=ndims, strides=values.strides,
                                       dtype=values.dtype):
-                        expected = [variogram.corr(*row) for row in values]
-                        actual = variogram.corr_array(values)
-                        self.assertEqual(actual.shape, (len(values),))
+                        expected = [[variogram.corr(*row)] for row in values]
+                        actual = variogram.corr_array(values, np.zeros((1, ndims)))
+                        self.assertEqual(actual.shape, (len(values), 1))
                         self.assertEqual(actual.dtype, np.dtype('float64'))
                         np.testing.assert_allclose(actual, expected, rtol=1e-14, atol=1e-14)
 
     def test_corr_array_empty(self):
         variogram = grf.variogram('exponential', 1000.0)
         for ndims in (1, 2, 3):
-            self.assertEqual(variogram.corr_array(np.empty((0, ndims))).shape, (0,))
+            self.assertEqual(variogram.corr_array(np.empty((0, ndims)), np.zeros((1, ndims))).shape, (0, 1))
 
     def test_corr_array_invalid_shape(self):
         variogram = grf.variogram('exponential', 1000.0)
         for shape in ((), (3,), (2, 0), (2, 4), (2, 2, 2)):
             with self.subTest(shape=shape):
-                with self.assertRaisesRegex(ValueError, 'displacements must have shape'):
-                    variogram.corr_array(np.zeros(shape))
+                with self.assertRaisesRegex(ValueError, 'points and locations must have shapes'):
+                    variogram.corr_array(np.zeros(shape), np.zeros(shape))
 
 
 if __name__ == '__main__':

@@ -80,12 +80,12 @@ class NonstationaryVariogram(Covariance):
         location_indices, location_weights = self.weights(locations)
         components = self._point_components(points)
         corr = np.zeros((len(points), len(locations)))
-        for j, location in enumerate(locations):
+        for j in range(len(locations)):
             for m, location_weight in zip(location_indices[j], location_weights[j]):
                 if location_weight == 0.0 or m not in components:
                     continue
                 mask, component_points, point_weight = components[m]
-                correlations = self.component(m).corr_array(component_points - location)
+                correlations = self.component(m).corr_array(component_points, locations[j:j + 1])[:, 0]
                 correlations *= location_weight * point_weight
                 if mask is None:
                     corr[:, j] += correlations
@@ -207,10 +207,11 @@ class NonstationaryVariogram(Covariance):
                 spacing.append(max(vertical_range / 8.0, 2.0 * half_depth / sizes[2]))
             offsets = [np.fft.fftfreq(n) * n * d for n, d in zip(sizes, spacing)]
             lags = np.column_stack([lag.ravel() for lag in np.meshgrid(*offsets, indexing='ij')])
+            origin = np.zeros((1, ndim))
             tables = np.empty((self.n_bins // 2 + 1,) + sizes, dtype=np.float32)
             spectrum_0 = None
             for k in range(len(tables)):
-                cov = self.component(k).corr_array(lags).reshape(sizes)
+                cov = self.component(k).corr_array(lags, origin).reshape(sizes)
                 spectrum = np.maximum(np.fft.rfftn(cov).real, 0.0)
                 if spectrum_0 is None:
                     spectrum_0 = spectrum

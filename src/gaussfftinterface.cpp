@@ -96,8 +96,10 @@ const std::string variogram_docstring =
 
 const std::string corr_array_docstring =
   "\n"
-  "Return float64 correlations with shape (N,) for displacements with shape\n"
-  "(N, 1), (N, 2), or (N, 3). Columns are dx, dy, dz, as in corr.\n"
+  "Return the (N, M) float64 correlation matrix for points of shape (N, D)\n"
+  "and locations of shape (M, D), with D equal to 1, 2, or 3.\n"
+  "Entry (i, j) is corr(*(points[i] - locations[j])). Do not modify or\n"
+  "resize the input arrays while this call is running.\n"
 ;
 
 const std::string simulate_docstring =
@@ -185,7 +187,8 @@ PYBIND11_MODULE(_gaussianfft, m, py::mod_gil_not_used(), py::multiple_interprete
       .def("corr", ptr1)
       .def("corr", ptr2)
       .def("corr", ptr3)
-      .def("corr_array", &GaussFFT::CorrArray, corr_array_docstring.c_str())
+      .def("corr_array", &GaussFFT::CorrArray, py::arg("points"), py::arg("locations"),
+           corr_array_docstring.c_str())
     ;
   }
 

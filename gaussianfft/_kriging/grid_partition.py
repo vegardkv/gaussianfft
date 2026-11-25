@@ -143,7 +143,7 @@ def _find_optimal_chunk_shape(
     #   `examples/estimate_kriging_timing.py`.
     C_COV_OBS = 0.0
     C_SOLVE = 0.0
-    C_CROSS_COV = 2.273822e-08
+    C_CROSS_COV = 9.845905e-09
 
     def _chunk_shape(cx: float) -> tuple[int, ...]:
         chunk_shape = (cx * ratios).round().astype(int)

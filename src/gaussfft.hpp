@@ -30,7 +30,8 @@ CreateVariogram(const std::string & type,
                 double      power);
 
 py::array_t<double> CorrArray(const NRLib::Variogram    & variogram,
-                              const py::array_t<double> & displacements);
+                              const py::array_t<double> & points,
+                              const py::array_t<double> & locations);
 
 py::array_t<double>Simulate(NRLib::Variogram * variogram,
                                        size_t             nx,

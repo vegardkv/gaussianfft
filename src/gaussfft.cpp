@@ -95,26 +95,40 @@ NRLib::Variogram * GaussFFT::CreateVariogram(const std::string & type,
 
 /******************************************************************/
 py::array_t<double> GaussFFT::CorrArray(const NRLib::Variogram    & variogram,
-                                        const py::array_t<double> & displacements)
+                                        const py::array_t<double> & points,
+                                        const py::array_t<double> & locations)
 {
-  if (displacements.ndim() != 2 || displacements.shape(1) < 1 || displacements.shape(1) > 3)
-    throw py::value_error("displacements must have shape (N, 1), (N, 2), or (N, 3)");
+  if (points.ndim() != 2 || locations.ndim() != 2 || points.shape(1) != locations.shape(1)
+      || points.shape(1) < 1 || points.shape(1) > 3)
+    throw py::value_error("points and locations must have shapes (N, D) and (M, D) with D in {1, 2, 3}");
 
-  auto distances = displacements.unchecked<2>();
-  py::array_t<double> result(distances.shape(0));
-  auto correlations = result.mutable_unchecked<1>();
+  auto x = points.unchecked<2>();
+  auto y = locations.unchecked<2>();
+  py::array_t<double> result({x.shape(0), y.shape(0)});
+  auto correlations = result.mutable_unchecked<2>();
+  if (x.shape(0) == 0 || y.shape(0) == 0)
+    return result;
 
-  if (distances.shape(1) == 1) {
-    for (py::ssize_t index = 0; index < distances.shape(0); ++index)
-      correlations(index) = variogram.GetCorr(distances(index, 0));
-  }
-  else if (distances.shape(1) == 2) {
-    for (py::ssize_t index = 0; index < distances.shape(0); ++index)
-      correlations(index) = variogram.GetCorr(distances(index, 0), distances(index, 1));
-  }
-  else {
-    for (py::ssize_t index = 0; index < distances.shape(0); ++index)
-      correlations(index) = variogram.GetCorr(distances(index, 0), distances(index, 1), distances(index, 2));
+  {
+    py::gil_scoped_release release;
+    for (py::ssize_t i = 0; i < x.shape(0); ++i) {
+      const double px = x(i, 0);
+      if (x.shape(1) == 1) {
+        for (py::ssize_t j = 0; j < y.shape(0); ++j)
+          correlations(i, j) = variogram.GetCorr(px - y(j, 0));
+      }
+      else if (x.shape(1) == 2) {
+        const double py_coord = x(i, 1);
+        for (py::ssize_t j = 0; j < y.shape(0); ++j)
+          correlations(i, j) = variogram.GetCorr(px - y(j, 0), py_coord - y(j, 1));
+      }
+      else {
+        const double py_coord = x(i, 1);
+        const double pz = x(i, 2);
+        for (py::ssize_t j = 0; j < y.shape(0); ++j)
+          correlations(i, j) = variogram.GetCorr(px - y(j, 0), py_coord - y(j, 1), pz - y(j, 2));
+      }
+    }
   }
   return result;
 }

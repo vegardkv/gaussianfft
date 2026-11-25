@@ -27,7 +27,7 @@ class TestVariogram:
         reference = grf.variogram('matern52', main_range=200.0, perp_range=50.0, azimuth=30.0)
         points = GridSpec((20, 15), (10.0, 10.0)).coordinates()
         locations = points[[0, 37, 299]]
-        expected = np.stack([reference.corr_array(points - loc) for loc in locations], axis=1)
+        expected = reference.corr_array(points, locations)
         np.testing.assert_allclose(variogram.corr_matrix(points, locations), expected)
 
     def test_wrapped_and_raw_variogram_give_same_prediction(self):
@@ -272,6 +272,7 @@ class TestSharedNoise3D:
 
     def test_components_are_rotations_about_z(self):
         lags = np.random.default_rng(0).uniform(-100.0, 100.0, (20, 3))
+        origin = np.zeros((1, 3))
         for k in [1, 5]:
             theta = np.radians(self.variogram.help_azimuths[k])
             cos, sin = np.cos(theta), np.sin(theta)
@@ -279,8 +280,8 @@ class TestSharedNoise3D:
                 [cos * lags[:, 0] + sin * lags[:, 1], -sin * lags[:, 0] + cos * lags[:, 1], lags[:, 2]]
             )
             np.testing.assert_allclose(
-                self.variogram.component(k).corr_array(lags),
-                self.variogram.component(0).corr_array(rotated), atol=1e-12,
+                self.variogram.component(k).corr_array(lags, origin),
+                self.variogram.component(0).corr_array(rotated, origin), atol=1e-12,
             )
 
     def test_constant_azimuth_on_bin_matches_stationary(self):
