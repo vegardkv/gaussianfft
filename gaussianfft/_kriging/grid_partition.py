@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 import numpy as np
 from scipy.spatial import cKDTree
-from scipy.optimize import minimize_scalar
+from scipy.optimize import brentq
 
 from gaussianfft._kriging.covariance import Covariance
 from gaussianfft._kriging.grid_spec import GridSpec
@@ -173,8 +173,10 @@ def _find_padding(
         corr_threshold: float = 0.01,
 ) -> tuple[float, ...]:
     """ Estimates the axis-aligned padding distance based on a target correlation threshold. """
-    # TODO: This does take into account non-stationary variograms
-    # TODO: Padding matches variogram range, but should instead reflect the desired 
+    # TODO: This does not take into account anisotropic variograms, but this fix should wait
+    #       until we have fixed a similar issue on the C++ side related to axis-aligned padding.
+    # TODO: This does not take into account non-stationary variograms
+    # TODO: Padding matches variogram range, but should instead reflect the desired
     #       accuracy-tradeoff when using common data neighborhoods
     ndim = len(max_padding)
     origin = np.zeros((1, ndim))
@@ -184,21 +186,21 @@ def _find_padding(
         point[0, axis] = distance
         return float(variogram.corr_matrix(point, origin)[0, 0])
 
+    if _correlation(0.0, 0) <= corr_threshold:
+        return (0.0,) * ndim
+
+    def _solve_axis(axis: int) -> float:
+        limit = max_padding[axis]
+        if _correlation(limit, axis) > corr_threshold:
+            return limit
+        return brentq(lambda d: _correlation(d, axis) - corr_threshold, 0.0, limit)
+
     # Compute the axis-aligned padding in each dimension
-    sol_x = minimize_scalar(
-        lambda x: (_correlation(x, 0) - corr_threshold) ** 2,
-        bounds=(0, max_padding[0]), method='bounded',
-    )
+    sol_x = _solve_axis(0)
     if ndim == 1:
-        return (sol_x.x,)
-    sol_y = minimize_scalar(
-        lambda y: (_correlation(y, 1) - corr_threshold) ** 2,
-        bounds=(0, max_padding[1]), method='bounded',
-    )
+        return (sol_x,)
+    sol_y = _solve_axis(1)
     if ndim == 2:
-        return (sol_x.x, sol_y.x)
-    sol_z = minimize_scalar(
-        lambda z: (_correlation(z, 2) - corr_threshold) ** 2,
-        bounds=(0, max_padding[2]), method='bounded',
-    )
-    return (sol_x.x, sol_y.x, sol_z.x)
+        return (sol_x, sol_y)
+    sol_z = _solve_axis(2)
+    return (sol_x, sol_y, sol_z)
