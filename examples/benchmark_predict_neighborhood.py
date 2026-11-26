@@ -57,7 +57,7 @@ CASES = (
     BenchmarkCase('3D with stddev', ( 32,  24,  20), (10.0, 10.0,  5.0),   180,   'spherical', {'main_range': 75.0}, calculate_stddev=True),
     BenchmarkCase(      '3D large', (112,  96,  30), (10.0, 10.0, 10.0),   450,    'matern32', {'main_range': 45.0}),
     BenchmarkCase( '3D large 2000', (112,  96,  30), (10.0, 10.0, 10.0),  2000,    'matern32', {'main_range': 45.0}),
-    BenchmarkCase(       '3D Huge', (292, 205,  58), (10.0, 10.0, 10.0),  3600, 'exponential', {'main_range': 50.0}, huge=True),
+    BenchmarkCase(       '3D Huge', (500, 350, 100), (10.0, 10.0, 10.0), 18000, 'exponential', {'main_range': 50.0}, huge=True),
 )
 
 SEED = 42
